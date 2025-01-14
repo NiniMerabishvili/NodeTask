@@ -1,24 +1,37 @@
 ﻿const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const User = require('./User'); 
 
-const Follow = sequelize.define('Follow', {
-    followerId: { 
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: User,
-            key: 'id',
+const Follow = sequelize.define(
+    'Follow',
+    {
+        followerId: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            primaryKey: true,
+            references: {
+                model: 'Users',
+                key: 'id',
+            },
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
+        },
+        followingId: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            primaryKey: true,
+            references: {
+                model: 'Users',
+                key: 'id',
+            },
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
         },
     },
-    followingId: { 
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: User,
-            key: 'id',
-        },
-    },
-});
+    {
+        timestamps: true, // Add `createdAt` and `updatedAt`
+        tableName: 'Follows', // Ensure table name is correct
+        freezeTableName: true, // Prevent Sequelize from pluralizing the table name
+    }
+);
 
 module.exports = Follow;

@@ -1,39 +1,47 @@
-// migrations/xxxxxx-create-users.js
+'use strict';
+
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable('Users', {
+    await queryInterface.createTable('Follows', {
       id: {
         type: Sequelize.INTEGER,
-        primaryKey: true,
+        allowNull: false,
         autoIncrement: true,
+        primaryKey: true,
       },
-      username: {
-        type: Sequelize.STRING,
-        allowNull: false,
-        unique: true,
-      },
-      password: {
-        type: Sequelize.STRING,
+      followerId: {
+        type: Sequelize.INTEGER,
         allowNull: false,
       },
-      profile_picture: {
-        type: Sequelize.STRING,
-        allowNull: true,
+      followingId: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
       },
       createdAt: {
         type: Sequelize.DATE,
-        defaultValue: Sequelize.NOW,
         allowNull: false,
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
-        defaultValue: Sequelize.NOW,
         allowNull: false,
+        defaultValue: Sequelize.NOW,
       },
     });
+
+    // Add composite unique constraint
+    await queryInterface.addConstraint('Follows', {
+      fields: ['followerId', 'followingId'],
+      type: 'unique',
+      name: 'follower_following_unique_constraint',
+    });
+
+    // Add indexes for performance
+    await queryInterface.addIndex('Follows', ['followerId']);
+    await queryInterface.addIndex('Follows', ['followingId']);
   },
 
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.dropTable('Users');
+    await queryInterface.dropTable('Follows');
   },
 };

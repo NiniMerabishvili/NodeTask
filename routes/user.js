@@ -2,6 +2,8 @@
 const router = express.Router();
 const userService = require('../services/userService');
 const multer = require('multer');
+const authenticateUser = require('../middleware/authenticateUser');
+
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -18,10 +20,11 @@ const upload = multer({ storage });
 router.get('/getAll', userService.getAll);
 router.post('/register', userService.register);
 router.post('/login', userService.login);
-router.post('/uploadProfilePicture', upload.single('profilePicture'), userService.uploadProfilePicture);
-router.post('/follow', userService.followUser);
-router.post('/unfollow', userService.unfollowUser);
-router.get('/:userId/followers', userService.listFollowers);
-router.get('/:userId/following', userService.listFollowing);
+router.post(
+    '/uploadProfilePicture',
+    authenticateUser,
+    upload.single('profilePicture'),
+    userService.uploadProfilePicture
+);
 
 module.exports = router;

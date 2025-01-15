@@ -9,5 +9,6 @@ const authenticateUser = require('../middleware/authenticateUser')
 // Route to follow a user
 router.post('/follow', authenticateUser, followUserController);
 router.get('/getAllFollowers', authenticateUser, followService.getAllFollowers);
+router.get('/getAllFollowings', authenticateUser, followService.getAllFollowings);
 
 module.exports = router;

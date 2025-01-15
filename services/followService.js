@@ -43,5 +43,25 @@
                 .catch(error => {
                     res.status(500).json(error);
                 });
+        },
+
+        getAllFollowings: (req, res) => {
+            const userId = req.user.id;
+
+            if (!userId) {
+                return res.status(400).json({ error: 'userId is required' });
+            }
+
+            Follow.findAll({
+                where: {
+                    followerId: userId
+                }
+            })
+                .then(data => {
+                    res.json(data);
+                })
+                .catch(error => {
+                    res.status(500).json(error);
+                });
         }
     };

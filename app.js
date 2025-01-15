@@ -17,55 +17,29 @@ const port = process.env.PORT || 3001;
 const server = http.createServer(app); // (1)
 
 // Create WebSocket server
-const wss = new WebSocket.Server({ server }); // (2)
+const wss = new WebSocket.Server({ server: server }); // Use the server instance, not the http module
 
-wss.on('connection', (client, req) => {
-    const token = req.url.split('token=')[1]; // Extract token from query string
-    if (token) {
-        jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-            if (err) {
-                console.log('Authentication failed');
-                client.close();
-            } else {
-                client.user = decoded; // Attach user info to client
-                console.log(`Authenticated user: ${decoded.username}`);
+wss.on('connection', (ws, req) => {
+    console.log('A user connected');
+
+    ws.on('message', async (message) => {
+        const { senderId, recipientId, messageText } = JSON.parse(message);
+
+        // Your message handling logic here
+
+        // Example: Send the message back to the recipient (simplified)
+        wss.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN && client.userId === recipientId) {
+                client.send(JSON.stringify({ senderId, messageText }));
             }
         });
-    } else {
-        client.close();
-    }
-
-    client.on('message', async (msg) => {
-        console.log(`Message received: ${msg}`);
-        try {
-            const { recipientId, message } = JSON.parse(msg);
-            const senderId = client.user.id; // Use the authenticated user ID
-
-            // Save message to the database
-            const newMessage = await Message.create({
-                senderId,
-                recipientId,
-                message,
-            });
-
-            // Broadcast the message to all clients
-            for (const otherClient of wss.clients) {
-                if (otherClient.readyState === WebSocket.OPEN) {
-                    otherClient.send(JSON.stringify({
-                        type: 'new_message',
-                        data: newMessage,
-                    }));
-                }
-            }
-        } catch (error) {
-            console.error('Error processing message:', error);
-        }
     });
 
-    client.on('close', () => {
-        console.log('Client disconnected');
+    ws.on('close', () => {
+        console.log('User disconnected');
     });
 });
+
 
 
 function broadcast(msg) {  // (4)

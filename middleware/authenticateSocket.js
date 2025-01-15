@@ -1,6 +1,5 @@
 ﻿const jwt = require('jsonwebtoken');
 
-// Middleware to authenticate WebSocket connections
 module.exports = (socket, next) => {
     const token = socket.handshake.query.token; // JWT sent with connection request
     if (!token) {

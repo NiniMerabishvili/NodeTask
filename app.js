@@ -1,5 +1,6 @@
 // Import dependencies
 const express = require('express');
+const jwt = require('jsonwebtoken');
 const http = require('http');
 const WebSocket = require('ws'); // Import WebSocket from 'ws'
 const { Client } = require('pg');
@@ -18,18 +19,54 @@ const server = http.createServer(app); // (1)
 // Create WebSocket server
 const wss = new WebSocket.Server({ server }); // (2)
 
-wss.on('connection', (client) => {
-    console.log('Client connected!');
+wss.on('connection', (client, req) => {
+    const token = req.url.split('token=')[1]; // Extract token from query string
+    if (token) {
+        jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+            if (err) {
+                console.log('Authentication failed');
+                client.close();
+            } else {
+                client.user = decoded; // Attach user info to client
+                console.log(`Authenticated user: ${decoded.username}`);
+            }
+        });
+    } else {
+        client.close();
+    }
 
-    client.on('message', (msg) => {  // (3)
+    client.on('message', async (msg) => {
         console.log(`Message received: ${msg}`);
-        broadcast(msg);
+        try {
+            const { recipientId, message } = JSON.parse(msg);
+            const senderId = client.user.id; // Use the authenticated user ID
+
+            // Save message to the database
+            const newMessage = await Message.create({
+                senderId,
+                recipientId,
+                message,
+            });
+
+            // Broadcast the message to all clients
+            for (const otherClient of wss.clients) {
+                if (otherClient.readyState === WebSocket.OPEN) {
+                    otherClient.send(JSON.stringify({
+                        type: 'new_message',
+                        data: newMessage,
+                    }));
+                }
+            }
+        } catch (error) {
+            console.error('Error processing message:', error);
+        }
     });
 
     client.on('close', () => {
         console.log('Client disconnected');
     });
 });
+
 
 function broadcast(msg) {  // (4)
     for (const client of wss.clients) {

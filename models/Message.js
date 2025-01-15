@@ -15,9 +15,7 @@ const Message = sequelize.define('Message', {
         allowNull: false,
     },
 }, {
-    timestamps: true,
+    timestamps: true, // Automatically add createdAt and updatedAt columns
 });
 
-
 module.exports = Message;
-        

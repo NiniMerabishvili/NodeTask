@@ -26,6 +26,11 @@ wss.on('connection', (ws, req) => {
 
     // Extract token from the URL
     const token = req.url.split('token=')[1];
+    if (!token) {
+        ws.send(JSON.stringify({ error: 'Token missing in connection URL' }));
+        return ws.close();
+    }
+
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const userId = decoded.id;
@@ -37,28 +42,63 @@ wss.on('connection', (ws, req) => {
         console.log(`User ${userId} connected`);
     } catch (error) {
         console.error('Invalid token:', error);
-        ws.close();
+        ws.send(JSON.stringify({ error: 'Authentication failed' }));
+        return ws.close();
     }
 
-    ws.on('message', (message) => {
+    // Listen for incoming messages from the connected client
+    ws.on('message', async (message) => {
         const { senderId, recipientId, messageText } = JSON.parse(message);
 
-        console.log(`Message from ${senderId} to ${recipientId}: ${messageText}`);
+        try {
+            // Check if both users are following each other
+            const isSenderFollowingRecipient = await Follow.findOne({
+                where: { followerId: senderId, followingId: recipientId },
+            });
 
-        // Send message to the recipient
-        const recipientWs = users.get(recipientId);
-        if (recipientWs && recipientWs.readyState === WebSocket.OPEN) {
-            recipientWs.send(JSON.stringify({ senderId, messageText }));
-        } else {
-            console.log(`Recipient ${recipientId} is not connected`);
+            const isRecipientFollowingSender = await Follow.findOne({
+                where: { followerId: recipientId, followingId: senderId },
+            });
+
+            if (!isSenderFollowingRecipient || !isRecipientFollowingSender) {
+                ws.send(JSON.stringify({
+                    error: 'You can only send messages to users who follow you and are followed by you.',
+                }));
+                return;
+            }
+
+            // Save the message to the database
+            const newMessage = await Message.create({
+                senderId,
+                recipientId,
+                message: messageText,
+            });
+
+            console.log('Message saved to database:', newMessage);
+
+            // Send the message to the recipient if they are connected
+            const recipientWs = users.get(recipientId);
+            if (recipientWs && recipientWs.readyState === WebSocket.OPEN) {
+                recipientWs.send(JSON.stringify({
+                    senderId,
+                    messageText,
+                    createdAt: newMessage.createdAt,
+                }));
+            } else {
+                console.log(`Recipient ${recipientId} is not connected`);
+            }
+        } catch (error) {
+            console.error('Error saving message:', error);
         }
     });
 
+    // When the connection is closed, remove the user from the map
     ws.on('close', () => {
         console.log(`User ${ws.userId} disconnected`);
         users.delete(ws.userId);
     });
-}); 
+});
+
 
 
 

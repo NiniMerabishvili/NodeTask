@@ -24,7 +24,40 @@
                 return { error: error.message || 'An error occurred' };
             }
         },
-    
+
+        unfollowUser: async (followerId, followingId) => {
+            try {
+                // Log both IDs to ensure they are numbers
+                console.log('Unfollow user - Follower ID:', followerId, 'Following ID:', followingId);
+
+                // Ensure IDs are numbers
+                if (isNaN(followerId) || isNaN(followingId)) {
+                    return { error: 'Invalid user ID(s)' };
+                }
+
+                const unfollow = await Follow.findOne({
+                    where: {
+                        followerId: Number(followerId),
+                        followingId: Number(followingId)
+                    }
+                });
+
+                if (!unfollow) {
+                    return { error: 'Follow relationship does not exist' };
+                }
+
+                // Delete the follow relationship
+                await unfollow.destroy();
+                console.log(`User ${followerId} unfollowed ${followingId}`);
+
+                return { message: 'Unfollow successful' };
+            } catch (error) {
+                console.error('Error:', error.message);
+                return { error: error.message || 'An error occurred' };
+            }
+        },
+
+
         getAllFollowers: (req, res) => {
             const userId = req.user.id; 
             

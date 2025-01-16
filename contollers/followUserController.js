@@ -11,6 +11,6 @@ const followUserController = async (req, res) => {
     }
 
     res.status(201).json({ message: 'Followed successfully', follow: result });
-};
+}
 
 module.exports = { followUserController };

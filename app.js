@@ -19,26 +19,46 @@ const server = http.createServer(app); // (1)
 // Create WebSocket server
 const wss = new WebSocket.Server({ server: server }); // Use the server instance, not the http module
 
+const users = new Map(); // Maps userId to WebSocket connection
+
 wss.on('connection', (ws, req) => {
     console.log('A user connected');
 
-    ws.on('message', async (message) => {
+    // Extract token from the URL
+    const token = req.url.split('token=')[1];
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = decoded.id;
+
+        // Save the connection
+        ws.userId = userId;
+        users.set(userId, ws);
+
+        console.log(`User ${userId} connected`);
+    } catch (error) {
+        console.error('Invalid token:', error);
+        ws.close();
+    }
+
+    ws.on('message', (message) => {
         const { senderId, recipientId, messageText } = JSON.parse(message);
 
-        // Your message handling logic here
+        console.log(`Message from ${senderId} to ${recipientId}: ${messageText}`);
 
-        // Example: Send the message back to the recipient (simplified)
-        wss.clients.forEach(client => {
-            if (client.readyState === WebSocket.OPEN && client.userId === recipientId) {
-                client.send(JSON.stringify({ senderId, messageText }));
-            }
-        });
+        // Send message to the recipient
+        const recipientWs = users.get(recipientId);
+        if (recipientWs && recipientWs.readyState === WebSocket.OPEN) {
+            recipientWs.send(JSON.stringify({ senderId, messageText }));
+        } else {
+            console.log(`Recipient ${recipientId} is not connected`);
+        }
     });
 
     ws.on('close', () => {
-        console.log('User disconnected');
+        console.log(`User ${ws.userId} disconnected`);
+        users.delete(ws.userId);
     });
-});
+}); 
 
 
 

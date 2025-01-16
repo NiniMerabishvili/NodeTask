@@ -92,13 +92,27 @@ PORT=<Application Port>
 * **Authentication:**
     - **Register a user** with a unique username and password.
     - **Login** to receive a JWT token for authentication.
+  	- `POST /users/login`: with username and password.
+  	  {
+		    "username": "username,
+		    "password": "password"
+	    }
+  	- `POST /users/register`:
+  	    {
+		    "username": "username,
+		    "password": "password"
+	    }
     - **JWT token** is required for accessing protected endpoints.
 
 * **Follow System:**
-    - `POST /users/follow`: Follow a user by ID.
-    - `POST /users/unfollow`: Unfollow a user by ID.
-    - `GET /users/getAlFollowers`: Get the list of followers for a user.
-    - `GET /users/getAllFollowings`: Get the list of users a user is following.
+    - `POST /follows/follow`: Follow a user by ID.
+            {
+		    "followingId": 3,
+		    "followerId": 4
+	    }
+    - `POST /follows/unfollow`: Unfollow a user by ID.
+    - `GET /follows/getAlFollowers`: Get the list of followers for a user.
+    - `GET /follows/getAllFollowings`: Get the list of users a user is following.
 
 * **Image Upload:**
     - `POST /users/uploadProfilePicture`: Upload or update a profile picture for the logged-in user. 
@@ -115,7 +129,7 @@ PORT=<Application Port>
 	    {
 		    "senderId": 3,
 		    "recipientId": 4,
-			"messageText": "Hello"
+		    "messageText": "Hello"
 	    }
       Send it and message will display on the second tab in Received Messages section.
 

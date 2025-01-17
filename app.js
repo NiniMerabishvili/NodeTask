@@ -14,10 +14,10 @@ const app = express();
 const port = process.env.PORT || 3001;
 
 // Create HTTP server
-const server = http.createServer(app); // (1)
+const server = http.createServer(app);
 
 // Create WebSocket server
-const wss = new WebSocket.Server({ server: server }); // Use the server instance, not the http module
+const wss = new WebSocket.Server({ server }); // Use the server instance
 
 const users = new Map(); // Maps userId to WebSocket connection
 
@@ -47,10 +47,19 @@ wss.on('connection', (ws, req) => {
     }
 
     // Listen for incoming messages from the connected client
-    ws.on('message', async (message) => {
-        const { senderId, recipientId, messageText } = JSON.parse(message);
-
+    ws.on('message', async (rawMessage) => {
         try {
+            // Parse incoming message
+            const { senderId, recipientId, message } = JSON.parse(rawMessage);
+
+            // Validate payload
+            if (!senderId || !recipientId || !message) {
+                ws.send(JSON.stringify({
+                    error: 'Invalid payload. senderId, recipientId, and message are required.',
+                }));
+                return;
+            }
+
             // Check if both users are following each other
             const isSenderFollowingRecipient = await Follow.findOne({
                 where: { followerId: senderId, followingId: recipientId },
@@ -71,7 +80,7 @@ wss.on('connection', (ws, req) => {
             const newMessage = await Message.create({
                 senderId,
                 recipientId,
-                message: messageText,
+                message, // Ensure this maps to the database field
             });
 
             console.log('Message saved to database:', newMessage);
@@ -81,14 +90,15 @@ wss.on('connection', (ws, req) => {
             if (recipientWs && recipientWs.readyState === WebSocket.OPEN) {
                 recipientWs.send(JSON.stringify({
                     senderId,
-                    messageText,
+                    message,
                     createdAt: newMessage.createdAt,
                 }));
             } else {
                 console.log(`Recipient ${recipientId} is not connected`);
             }
         } catch (error) {
-            console.error('Error saving message:', error);
+            console.error('Error handling message:', error);
+            ws.send(JSON.stringify({ error: 'Error processing your message.' }));
         }
     });
 
@@ -99,29 +109,18 @@ wss.on('connection', (ws, req) => {
     });
 });
 
-
-
-
-function broadcast(msg) {  // (4)
-    for (const client of wss.clients) {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(msg);
-        }
-    }
-}
-
 // PostgreSQL Client setup
 const client = new Client({
     user: process.env.DB_USER || 'postgres',
     host: process.env.DB_HOST || 'localhost',
     database: process.env.DB_NAME || 'social_media',
-    password: process.env.DB_PASSWORD || '***',
+    password: process.env.DB_PASSWORD || 'networkers123',
     port: process.env.DB_PORT || 5432,
 });
 
 // Use express routes
-var userRouter = require('./routes/user');
-var followRouter = require('./routes/follow');
+const userRouter = require('./routes/user');
+const followRouter = require('./routes/follow');
 
 app.use(express.json());
 
